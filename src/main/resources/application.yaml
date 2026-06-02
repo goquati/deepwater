@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: deepwater
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: openhippo-catch-all
+              uri: https://api.openhippo.io
+              predicates:
+                - Path=/**
