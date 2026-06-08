@@ -1,4 +1,13 @@
+server:
+  port: 8800
 spring:
+  cache:
+    type: caffeine
+    cache-names: base64-cache
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=24h
+  config:
+    import: optional:classpath:.env[.properties]
   application:
     name: deepwater
   cloud:
@@ -10,3 +19,9 @@ spring:
               uri: https://api.openhippo.io
               predicates:
                 - Path=/**
+
+model:
+  vision: hippo-vision
+
+ocr:
+  api-key: your-api-key-here
