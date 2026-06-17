@@ -1,0 +1,8 @@
+services:
+  deepwater:
+    build: .
+    ports:
+      - "8800:8800"
+    environment:
+      - OCR_API_KEY=${OCR_API_KEY:-}
+    restart: unless-stopped
