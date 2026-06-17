@@ -6,11 +6,13 @@ COPY gradle gradle
 COPY build.gradle.kts .
 COPY settings.gradle.kts .
 
-RUN ./gradlew dependencies --no-daemon
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew dependencies --no-daemon
 
 COPY src src
 
-RUN ./gradlew bootJar --no-daemon
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
