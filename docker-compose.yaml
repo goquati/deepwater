@@ -1,6 +1,7 @@
 services:
   deepwater:
-    build: .
+    #build: .
+    image: rg.nl-ams.scw.cloud/quati/deepwater:latest
     ports:
       - "8800:8800"
     environment:
