@@ -60,7 +60,7 @@ class OcrService(
             is AttachmentContent.PlainText -> TODO("not supported yet")
             is AttachmentContent.URL -> TODO("not supported yet")
         }
-        val response = client.post("https://docling.infra.openhippo.io/v1/convert/file") {
+        val response = client.post("${config.baseUrl}/v1/convert/file") {
             header("X-Api-Key", config.apiKey)
             setBody(
                 MultiPartFormDataContent(

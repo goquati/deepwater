@@ -7,8 +7,9 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.reactivestreams.Publisher
-import org.springframework.cloud.gateway.filter.GatewayFilterChain
-import org.springframework.cloud.gateway.filter.GlobalFilter
+import org.springframework.cloud.gateway.filter.GatewayFilter
+import org.springframework.cloud.gateway.filter.OrderedGatewayFilter
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory
 import org.springframework.core.Ordered
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferUtils
@@ -21,21 +22,26 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Component
-class ProxyFilter(
+class LlmGatewayFilterFactory(
     private val contentFilterService: ContentFilterService,
-) : GlobalFilter, Ordered {
+) : AbstractGatewayFilterFactory<LlmGatewayFilterFactory.Config>(Config::class.java) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    override fun getOrder(): Int = Ordered.HIGHEST_PRECEDENCE + 1
+    class Config
 
-    override fun filter(exchange: ServerWebExchange, chain: GatewayFilterChain): Mono<Void> = mono {
-        val mutatedExchange = mutateRequest(exchange)
-        val decoratedExchange = mutatedExchange.mutate()
-            .response(decorateResponse(mutatedExchange))
-            .build()
-        chain.filter(decoratedExchange).awaitSingleOrNull()
-    }.then()
+    override fun apply(config: Config): GatewayFilter = OrderedGatewayFilter(
+        { exchange, chain ->
+            mono {
+                val mutatedExchange = mutateRequest(exchange)
+                val decoratedExchange = mutatedExchange.mutate()
+                    .response(decorateResponse(mutatedExchange))
+                    .build()
+                chain.filter(decoratedExchange).awaitSingleOrNull()
+            }.then()
+        },
+        Ordered.HIGHEST_PRECEDENCE + 1
+    )
 
     private suspend fun mutateRequest(exchange: ServerWebExchange): ServerWebExchange {
         val authHeader = exchange.request.headers.getFirst("Authorization") ?: ""

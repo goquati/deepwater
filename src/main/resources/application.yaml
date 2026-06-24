@@ -15,13 +15,25 @@ spring:
       server:
         webflux:
           routes:
+            - id: ocr-route
+              uri: https://docling.infra.openhippo.io
+              predicates:
+                - Path=/ocr/**
+              filters:
+                - StripPrefix=1
+                - Ocr
             - id: openhippo-catch-all
               uri: https://api.openhippo.io
               predicates:
                 - Path=/**
+              filters:
+                - Llm
 
 model:
-  vision: hippo-vision
+  base-url: https://api.openhippo.io
+  api-key: your-api-key-here
+  vision: hippo-ocr
 
 ocr:
+  base-url: https://docling.infra.openhippo.io
   api-key: your-api-key-here

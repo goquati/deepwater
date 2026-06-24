@@ -11,7 +11,9 @@ class VisionModelConfiguration(
 ) {
     @ConfigurationProperties(prefix = "model")
     class Properties {
+        lateinit var baseUrl: String
         lateinit var vision: String
+        lateinit var apiKey: String
     }
 
     val modelId: VisionModelId

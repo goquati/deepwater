@@ -15,7 +15,12 @@ class GatewayConfiguration(
     }
 
     val route: String
-        get() = properties.routes.first().uri
+        get() = properties.routes.first { it.id == "openhippo-catch-all" }.uri
 
-    data class Route(val id: String, val uri: String, val predicates: List<String> = listOf())
+    data class Route(
+        val id: String,
+        val uri: String,
+        val predicates: List<String> = listOf(),
+        val filters: List<String> = listOf()
+    )
 }

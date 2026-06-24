@@ -12,6 +12,7 @@ class OcrConfiguration {
     @ConfigurationProperties(prefix = "ocr")
     class Properties {
         lateinit var apiKey: String
+        lateinit var baseUrl: String
     }
 
 }
