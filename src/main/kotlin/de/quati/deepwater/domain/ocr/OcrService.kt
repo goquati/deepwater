@@ -24,7 +24,9 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory.getLogger
 import org.springframework.stereotype.Service
+import kotlin.math.log
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -34,6 +36,10 @@ class OcrService(
     private val config: OcrConfiguration.Properties,
     private val visionService: VisionService,
 ) {
+    companion object {
+        private val logger = getLogger(OcrService::class.java)
+    }
+
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
             json(Json {
@@ -128,10 +134,15 @@ class OcrService(
                 val attachment = createImageAttachment(img.uuid.toString(), img.mimeType, img.data)
                 val annotation = visionService.processImage(source = attachment)
                 img.uuid to annotation
-            }.getOrNull()
+            }
+                .onFailure { error ->
+                    logger.error("Failed to annotate image with uuid ${img.uuid}", error)
+                }
+                .getOrNull()
         }.toList().mapNotNull { it }.toMap()
         var text = content
         imageAnnotationById.forEach { (uuid, annotation) ->
+            logger.info("Annotate Image: $annotation")
             text = text.replace(uuid.toString(), annotation.text)
         }
         return text
