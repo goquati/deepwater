@@ -32,7 +32,7 @@ spring:
 model:
   base-url: https://api.openhippo.io
   api-key: your-api-key-here
-  vision: hippo-ocr
+  vision: hippo-coding
 
 ocr:
   base-url: https://docling.infra.openhippo.io

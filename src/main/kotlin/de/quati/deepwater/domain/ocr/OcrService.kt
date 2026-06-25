@@ -92,7 +92,7 @@ class OcrService(
         }
     }
 
-    private suspend fun extractAndReplaceImages(
+    suspend fun extractAndReplaceImages(
         content: String,
     ): Pair<String, MutableList<ExtractedImage>> {
         val imagesByUuid = mutableListOf<ExtractedImage>()
@@ -119,7 +119,7 @@ class OcrService(
 
 
     context(_: FilterContext)
-    private suspend fun annotated(
+    suspend fun annotated(
         content: String,
         images: List<ExtractedImage>,
     ): String {

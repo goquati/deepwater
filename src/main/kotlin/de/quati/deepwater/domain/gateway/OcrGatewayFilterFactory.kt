@@ -1,7 +1,10 @@
 package de.quati.deepwater.domain.gateway
 
+import de.quati.deepwater.domain.ocr.OcrService
+import de.quati.deepwater.domain.vision.ModelConfiguration
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.mono
+import kotlinx.serialization.json.*
 import org.reactivestreams.Publisher
 import org.springframework.cloud.gateway.filter.GatewayFilter
 import org.springframework.cloud.gateway.filter.OrderedGatewayFilter
@@ -18,8 +21,10 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Component
-class OcrGatewayFilterFactory : AbstractGatewayFilterFactory<OcrGatewayFilterFactory.Config>(Config::class.java) {
-
+class OcrGatewayFilterFactory(
+    private val ocrService: OcrService,
+    private val modelConfiguration: ModelConfiguration.Properties,
+) : AbstractGatewayFilterFactory<OcrGatewayFilterFactory.Config>(Config::class.java) {
     class Config
 
     override fun apply(config: Config): GatewayFilter = OrderedGatewayFilter(
@@ -82,14 +87,37 @@ class OcrGatewayFilterFactory : AbstractGatewayFilterFactory<OcrGatewayFilterFac
     private fun decorateResponse(exchange: ServerWebExchange) =
         object : ServerHttpResponseDecorator(exchange.response) {
             override fun writeWith(body: Publisher<out DataBuffer>): Mono<Void> {
-                val wrappedBody = DataBufferUtils.join(Flux.from(body)).flatMap { dataBuffer ->
-                    val bytes = ByteArray(dataBuffer.readableByteCount()).also { dataBuffer.read(it) }
-                    DataBufferUtils.release(dataBuffer)
-                    println("[OCR] Response body: ${String(bytes, Charsets.UTF_8)}")
-                    val wrapped = exchange.response.bufferFactory().wrap(bytes)
-                    super.writeWith(Mono.just(wrapped))
-                }
-                return wrappedBody
+                return DataBufferUtils.join(Flux.from(body)).flatMap { dataBuffer ->
+                    mono {
+                        val bytes = ByteArray(dataBuffer.readableByteCount()).also { dataBuffer.read(it) }
+                        DataBufferUtils.release(dataBuffer)
+                        var body = Json.parseToJsonElement(String(bytes, Charsets.UTF_8)).jsonObject
+                        val parsedMarkdown = body["document"]?.jsonObject?.get("md_content")?.jsonPrimitive?.content
+                        if (parsedMarkdown != null) {
+                            val annotatedMarkdown = annotateImages(parsedMarkdown)
+                            val updatedDocument = JsonObject(body["document"]!!.jsonObject + ("md_content" to JsonPrimitive(annotatedMarkdown)))
+                            body = JsonObject(body + ("document" to updatedDocument))
+                        }
+
+                        val responseBytes = Json.encodeToString(body).toByteArray(Charsets.UTF_8)
+                        delegate.headers.contentLength = responseBytes.size.toLong()
+                        val wrapped = exchange.response.bufferFactory().wrap(responseBytes)
+                        super.writeWith(Mono.just(wrapped)).awaitSingleOrNull()
+                    }
+                }.then()
             }
         }
+
+    private suspend fun annotateImages(markdown: String): String {
+        val filterContext = FilterContext(
+            userMessage = "",
+            model = modelConfiguration.vision,
+            apiKey = modelConfiguration.apiKey,
+        )
+        val (minifiedContent, images) = ocrService.extractAndReplaceImages(markdown)
+        val annotatedContent = with(filterContext) {
+            ocrService.annotated(content = minifiedContent, images = images)
+        }
+        return annotatedContent
+    }
 }
