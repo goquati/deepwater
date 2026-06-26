@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service
 @Service
 class VisionService(
     private val properties: ModelConfiguration.Properties,
-    private val gatewayConfiguration: GatewayConfiguration,
 ) {
 
     context(context: FilterContext)
@@ -91,7 +90,7 @@ class VisionService(
         apiKey: String,
     ): OpenAILLMClient {
         return OpenAILLMClient(
-            settings = OpenAIClientSettings(baseUrl = gatewayConfiguration.route),
+            settings = OpenAIClientSettings(baseUrl = properties.baseUrl),
             apiKey = apiKey,
         )
     }
