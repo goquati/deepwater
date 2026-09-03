@@ -54,6 +54,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           outputs: type=image,name=${{ env.IMAGE }},name=${{ env.GHCR_IMAGE }},push-by-digest=true,name-canonical=true
+          provenance: false
           cache-from: type=gha,scope=${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
 
