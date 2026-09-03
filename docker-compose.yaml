@@ -3,13 +3,21 @@ services:
     #build: .
     image: rg.nl-ams.scw.cloud/quati/deepwater:latest
     ports:
-      - "8800:8800"
+      - "${SERVER_PORT:-8800}:${SERVER_PORT:-8800}"
     environment:
-      OCR_API_KEY: ${OCR_API_KEY:-}
+      SERVER_PORT: ${SERVER_PORT:-8800}
+
+      MODEL_BASE_URL: ${MODEL_BASE_URL:-https://api.openhippo.io}
+      MODEL_API_KEY: ${MODEL_API_KEY:-}
+      MODEL_VISION: ${MODEL_VISION:-hippo-coding}
       SPRING_APPLICATION_JSON: |
         {"model":{"capabilities":{"gpt-4o":["vision"],"hippo-vision":["vision"]}}}
-      # Demonstrates overriding the vision prompt; falls back to this same
-      # default in VisionService if MODEL_VISION_PROMPT is unset/blank.
+
+      OCR_BASE_URL: ${OCR_BASE_URL:-https://docling.infra.openhippo.io}
+      OCR_API_KEY: ${OCR_API_KEY:-}
+
+      SPRING_CACHE_CAFFEINE_SPEC: ${SPRING_CACHE_CAFFEINE_SPEC:-maximumSize=500,expireAfterWrite=24h}
+
       MODEL_VISION_PROMPT: |
         Du extrahierst ALLE Informationen aus einem Bild, das aus einem Dokument stammt (Diagramm, Chart, Tabelle, Formular, Foto, Handschrift, Screenshot, Formel u. a.).
 
