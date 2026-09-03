@@ -29,13 +29,14 @@ class ContentFilterService(
     private val json = Json { ignoreUnknownKeys = true }
     private val cache get() = cacheManager.getCache("base64-cache")!!
 
-    context(_: FilterContext)
+    context(context: FilterContext)
     suspend fun filterContentElement(cEl: JsonObject): JsonObject? {
         val type = cEl["type"]?.jsonPrimitive?.content ?: return cEl
         return when (type) {
             "text" -> cEl
             "input_audio" -> null
-            "image_url" -> handleImageUrl(cEl)?.let {
+            "image_url" -> if (context.hasNativeVision) cEl
+            else handleImageUrl(cEl)?.let {
                 cache.getOrPut(it.first) { visionService.processImage(it.second) }
             }?.toJsonObject()
 

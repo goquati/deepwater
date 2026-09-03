@@ -33,6 +33,9 @@ model:
   base-url: https://api.openhippo.io
   api-key: your-api-key-here
   vision: hippo-coding
+  capabilities:
+    hippo-vision:
+      - vision
 
 ocr:
   base-url: https://docling.infra.openhippo.io

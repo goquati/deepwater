@@ -113,6 +113,7 @@ class OcrGatewayFilterFactory(
             userMessage = "",
             model = modelConfiguration.vision,
             apiKey = modelConfiguration.apiKey,
+            hasNativeVision = modelConfiguration.hasVisionCapability(modelConfiguration.vision),
         )
         val (minifiedContent, images) = ocrService.extractAndReplaceImages(markdown)
         val annotatedContent = with(filterContext) {

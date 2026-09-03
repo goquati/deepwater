@@ -13,5 +13,9 @@ class ModelConfiguration {
         lateinit var vision: String
         lateinit var apiKey: String
         var visionPrompt: String? = null
+        var capabilities: Map<String, List<Capability>> = emptyMap()
+
+        fun hasVisionCapability(modelId: String): Boolean =
+            capabilities[modelId]?.contains(Capability.VISION) ?: false
     }
 }

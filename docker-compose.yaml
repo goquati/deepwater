@@ -6,6 +6,8 @@ services:
       - "8800:8800"
     environment:
       OCR_API_KEY: ${OCR_API_KEY:-}
+      SPRING_APPLICATION_JSON: |
+        {"model":{"capabilities":{"gpt-4o":["vision"],"hippo-vision":["vision"]}}}
       # Demonstrates overriding the vision prompt; falls back to this same
       # default in VisionService if MODEL_VISION_PROMPT is unset/blank.
       MODEL_VISION_PROMPT: |

@@ -1,5 +1,6 @@
 package de.quati.deepwater.domain.gateway
 
+import de.quati.deepwater.domain.vision.ModelConfiguration
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.mono
 import kotlinx.serialization.EncodeDefault
@@ -24,6 +25,7 @@ import reactor.core.publisher.Mono
 @Component
 class LlmGatewayFilterFactory(
     private val contentFilterService: ContentFilterService,
+    private val modelConfiguration: ModelConfiguration.Properties,
 ) : AbstractGatewayFilterFactory<LlmGatewayFilterFactory.Config>(Config::class.java) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -68,8 +70,12 @@ class LlmGatewayFilterFactory(
                             .find { it.jsonObject["type"]?.jsonPrimitive?.content == "text" }
                             .let { it?.jsonObject["text"]?.jsonPrimitive?.content } ?: return@map messagesEl
 
-                        val filterContext =
-                            FilterContext(apiKey = authHeader, model = model, userMessage = userMessage)
+                        val filterContext = FilterContext(
+                            apiKey = authHeader,
+                            model = model,
+                            userMessage = userMessage,
+                            hasNativeVision = modelConfiguration.hasVisionCapability(model),
+                        )
 
                         val content2: List<JsonObject> = content
                             .map(JsonElement::jsonObject)
@@ -120,4 +126,5 @@ data class FilterContext(
     val model: String,
     val userMessage: String,
     val apiKey: String,
+    val hasNativeVision: Boolean,
 )

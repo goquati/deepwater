@@ -3,6 +3,8 @@ package de.quati.deepwater.domain.gateway
 import de.quati.deepwater.domain.common.createImageAttachment
 import de.quati.deepwater.domain.ocr.OcrConfiguration
 import de.quati.deepwater.domain.ocr.OcrService
+import de.quati.deepwater.domain.vision.Capability
+import de.quati.deepwater.domain.vision.ModelConfiguration
 import de.quati.deepwater.domain.vision.VisionService
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -11,6 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager
 import org.springframework.cloud.gateway.filter.GatewayFilterChain
@@ -24,7 +27,8 @@ import kotlin.test.assertEquals
 /**
  * Verifies that an OpenAI-style chat request carrying a base64 image (`image_url` content
  * block) is routed through [VisionService] and the image is replaced by the model's
- * annotation before the request is forwarded upstream.
+ * annotation before the request is forwarded upstream - unless the target model is
+ * configured with native vision capability, in which case the image is passed through.
  */
 class LlmGatewayFilterFactoryTest {
 
@@ -38,14 +42,20 @@ class LlmGatewayFilterFactoryTest {
     )
     private val cacheManager = ConcurrentMapCacheManager("base64-cache")
     private val contentFilterService = ContentFilterService(visionService, ocrService, cacheManager)
-    private val filterFactory = LlmGatewayFilterFactory(contentFilterService)
+    private val modelConfiguration = ModelConfiguration.Properties().apply {
+        baseUrl = "http://unused"
+        vision = "hippo-coding"
+        apiKey = "unused"
+        capabilities = mapOf("hippo-vision" to listOf(Capability.VISION))
+    }
+    private val filterFactory = LlmGatewayFilterFactory(contentFilterService, modelConfiguration)
 
     @Test
-    fun `replaces base64 image content with vision model annotation`() {
+    fun `replaces base64 image content with vision model annotation for a model without native vision`() {
         val base64Image = "aGVsbG8td29ybGQ="
         val requestBody = """
             {
-              "model": "hippo-vision",
+              "model": "hippo-coding",
               "messages": [
                 {
                   "role": "user",
@@ -61,8 +71,9 @@ class LlmGatewayFilterFactoryTest {
         val expectedAttachment = createImageAttachment("", "png", base64Image)
         val filterContext = FilterContext(
             apiKey = "Bearer test-key",
-            model = "hippo-vision",
+            model = "hippo-coding",
             userMessage = "What's in this image?",
+            hasNativeVision = false,
         )
         runBlocking {
             with(filterContext) {
@@ -79,6 +90,81 @@ class LlmGatewayFilterFactoryTest {
 
         assertEquals("text", content[0].jsonObject["type"]!!.jsonPrimitive.content)
         assertEquals("What's in this image?", content[0].jsonObject["text"]!!.jsonPrimitive.content)
+        assertEquals("text", content[1].jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals("A friendly hippo.", content[1].jsonObject["text"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `passes through image content unchanged for a model with native vision capability`() {
+        val base64Image = "aGVsbG8td29ybGQ="
+        val requestBody = """
+            {
+              "model": "hippo-vision",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": [
+                    {"type": "text", "text": "What's in this image?"},
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,$base64Image"}}
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val exchange = buildExchange(requestBody, authorization = "Bearer test-key")
+        val mutatedExchange = invokeFilter(exchange)
+        val content = readRequestJson(mutatedExchange)
+            .jsonObject["messages"]!!.jsonArray[0]
+            .jsonObject["content"]!!.jsonArray
+
+        assertEquals("text", content[0].jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals("image_url", content[1].jsonObject["type"]!!.jsonPrimitive.content)
+        assertEquals(
+            "data:image/png;base64,$base64Image",
+            content[1].jsonObject["image_url"]!!.jsonObject["url"]!!.jsonPrimitive.content
+        )
+        verifyNoInteractions(visionService)
+    }
+
+    @Test
+    fun `falls back to manual vision routing for a model absent from the capability map`() {
+        val base64Image = "aGVsbG8td29ybGQ="
+        val requestBody = """
+            {
+              "model": "some-unlisted-model",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": [
+                    {"type": "text", "text": "What's in this image?"},
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64,$base64Image"}}
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val expectedAttachment = createImageAttachment("", "png", base64Image)
+        val filterContext = FilterContext(
+            apiKey = "Bearer test-key",
+            model = "some-unlisted-model",
+            userMessage = "What's in this image?",
+            hasNativeVision = false,
+        )
+        runBlocking {
+            with(filterContext) {
+                whenever(visionService.processImage(expectedAttachment))
+                    .thenReturn(TextMessage(text = "A friendly hippo."))
+            }
+        }
+
+        val exchange = buildExchange(requestBody, authorization = "Bearer test-key")
+        val mutatedExchange = invokeFilter(exchange)
+        val content = readRequestJson(mutatedExchange)
+            .jsonObject["messages"]!!.jsonArray[0]
+            .jsonObject["content"]!!.jsonArray
+
         assertEquals("text", content[1].jsonObject["type"]!!.jsonPrimitive.content)
         assertEquals("A friendly hippo.", content[1].jsonObject["text"]!!.jsonPrimitive.content)
     }
