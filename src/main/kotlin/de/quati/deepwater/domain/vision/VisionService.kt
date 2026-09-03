@@ -19,42 +19,42 @@ class VisionService(
     private val properties: ModelConfiguration.Properties,
 ) {
 
+    companion object {
+        private val DEFAULT_VISION_PROMPT: String = markdown {
+            +"Du extrahierst ALLE Informationen aus einem Bild, das aus einem Dokument stammt (Diagramm, Chart, Tabelle, Formular, Foto, Handschrift, Screenshot, Formel u. a.)."
+            br()
+
+            h2("Regeln")
+            bulleted {
+                item { +"Erfasse alles Sichtbare: Text, Zahlen, Beschriftungen, Strukturen, Symbole, Farben (wenn bedeutungstragend)." }
+                item { +"Transkribiere wortgetreu. Nichts korrigieren, übersetzen oder erfinden." }
+                item { +"Unklares/Abgeschnittenes/Unleserliches markieren statt raten: [unleserlich], [abgeschnitten]." }
+                item { +"Vorhandene Struktur (Tabelle, Diagramm, Formular) erhalten, nicht zu Fließtext verflachen." }
+                item { +"Beobachtung vor Interpretation." }
+                item { +"Antworte immer in deutsch" }
+            }
+            br()
+
+            h2("Ausgabe")
+            bulleted {
+                item { +"bildtyp: Klassifizierung" }
+                item { +"zusammenfassung: 1–3 Sätze" }
+                item { +"inhalt: vollständige strukturierte Extraktion (Tabelle/Knoten-Kanten-Liste je nach Typ)" }
+                item { +"text: wortgetreue Transkription oder \"keiner\"" }
+                item { +"daten: strukturierte Daten bei Chart/Tabelle/Formular, sonst \"n/v\"" }
+                item { +"unsicherheiten: Unleserliches/Mehrdeutiges, sonst \"keine\"" }
+            }
+            br()
+            +"Nur die Ausgabe im obigen Format, keine Einleitung."
+        }
+    }
+
     context(context: FilterContext)
     suspend fun processImage(
         source: AttachmentSource.Image,
     ): TextMessage {
         val prompt = prompt("") {
-            system {
-                markdown {
-                    markdown {
-                        +"Du extrahierst ALLE Informationen aus einem Bild, das aus einem Dokument stammt (Diagramm, Chart, Tabelle, Formular, Foto, Handschrift, Screenshot, Formel u. a.)."
-                        br()
-
-                        h2("Regeln")
-                        bulleted {
-                            item { +"Erfasse alles Sichtbare: Text, Zahlen, Beschriftungen, Strukturen, Symbole, Farben (wenn bedeutungstragend)." }
-                            item { +"Transkribiere wortgetreu. Nichts korrigieren, übersetzen oder erfinden." }
-                            item { +"Unklares/Abgeschnittenes/Unleserliches markieren statt raten: [unleserlich], [abgeschnitten]." }
-                            item { +"Vorhandene Struktur (Tabelle, Diagramm, Formular) erhalten, nicht zu Fließtext verflachen." }
-                            item { +"Beobachtung vor Interpretation." }
-                            item { +"Antworte immer in deutsch" }
-                        }
-                        br()
-
-                        h2("Ausgabe")
-                        bulleted {
-                            item { +"bildtyp: Klassifizierung" }
-                            item { +"zusammenfassung: 1–3 Sätze" }
-                            item { +"inhalt: vollständige strukturierte Extraktion (Tabelle/Knoten-Kanten-Liste je nach Typ)" }
-                            item { +"text: wortgetreue Transkription oder \"keiner\"" }
-                            item { +"daten: strukturierte Daten bei Chart/Tabelle/Formular, sonst \"n/v\"" }
-                            item { +"unsicherheiten: Unleserliches/Mehrdeutiges, sonst \"keine\"" }
-                        }
-                        br()
-                        +"Nur die Ausgabe im obigen Format, keine Einleitung."
-                    }
-                }
-            }
+            system(properties.visionPrompt?.takeIf { it.isNotBlank() } ?: DEFAULT_VISION_PROMPT)
             user {
                 text(context.userMessage)
                 image(source)

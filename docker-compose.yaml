@@ -5,5 +5,27 @@ services:
     ports:
       - "8800:8800"
     environment:
-      - OCR_API_KEY=${OCR_API_KEY:-}
+      OCR_API_KEY: ${OCR_API_KEY:-}
+      # Demonstrates overriding the vision prompt; falls back to this same
+      # default in VisionService if MODEL_VISION_PROMPT is unset/blank.
+      MODEL_VISION_PROMPT: |
+        Du extrahierst ALLE Informationen aus einem Bild, das aus einem Dokument stammt (Diagramm, Chart, Tabelle, Formular, Foto, Handschrift, Screenshot, Formel u. a.).
+
+        ## Regeln
+        - Erfasse alles Sichtbare: Text, Zahlen, Beschriftungen, Strukturen, Symbole, Farben (wenn bedeutungstragend).
+        - Transkribiere wortgetreu. Nichts korrigieren, übersetzen oder erfinden.
+        - Unklares/Abgeschnittenes/Unleserliches markieren statt raten: [unleserlich], [abgeschnitten].
+        - Vorhandene Struktur (Tabelle, Diagramm, Formular) erhalten, nicht zu Fließtext verflachen.
+        - Beobachtung vor Interpretation.
+        - Antworte immer in deutsch
+
+        ## Ausgabe
+        - bildtyp: Klassifizierung
+        - zusammenfassung: 1–3 Sätze
+        - inhalt: vollständige strukturierte Extraktion (Tabelle/Knoten-Kanten-Liste je nach Typ)
+        - text: wortgetreue Transkription oder "keiner"
+        - daten: strukturierte Daten bei Chart/Tabelle/Formular, sonst "n/v"
+        - unsicherheiten: Unleserliches/Mehrdeutiges, sonst "keine"
+
+        Nur die Ausgabe im obigen Format, keine Einleitung.
     restart: unless-stopped

@@ -36,6 +36,7 @@ dependencies {
 	implementation("com.github.ben-manes.caffeine:caffeine")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("io.projectreactor:reactor-test")
+	testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -56,7 +57,8 @@ kotlin {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
-val compileKotlin: KotlinCompile by tasks
-compileKotlin.compilerOptions {
-    freeCompilerArgs.set(listOf("-Xcontext-parameters"))
+tasks.withType<KotlinCompile>().configureEach {
+    compilerOptions {
+        freeCompilerArgs.add("-Xcontext-parameters")
+    }
 }

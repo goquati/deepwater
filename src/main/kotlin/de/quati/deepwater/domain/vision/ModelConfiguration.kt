@@ -12,5 +12,6 @@ class ModelConfiguration {
         lateinit var baseUrl: String
         lateinit var vision: String
         lateinit var apiKey: String
+        var visionPrompt: String? = null
     }
 }
